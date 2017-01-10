@@ -21,11 +21,6 @@ import face
 import cv2
 import config
 import signal
-import datetime
-import os
-import telepot
-import numpy as np
-
 
 def to_node(type, message):
     # convert to json and print (node helper will read from stdout)
@@ -36,16 +31,8 @@ def to_node(type, message):
     # stdout has to be flushed manually to prevent delays in the node helper communication
     sys.stdout.flush()
 
-def rotateImage(image, angle):
-    center = tuple(np.array(image.shape)[:2]/2) # 2d !
-    rot_mat = cv2.getRotationMatrix2D(center,angle,1.0)
-    result = cv2.warpAffine(image, rot_mat, image.shape[:2],flags=cv2.INTER_LINEAR)
-    return result
-
-
 
 to_node("status", "Facerecognition started...")
-bot = telepot.Bot(config.get("telegramBotToken")
 
 # Setup variables
 current_user = None
@@ -93,10 +80,6 @@ while True:
     if detection_active is True:
         # Get image
         image = camera.read()
-        # Rotate image
-        image = rotateImage(image, config.get("rotateImageDegrees"))
-        # Save original image
-        image_orig = image
         # Convert image to grayscale.
         image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         # Get coordinates of single face in captured image.
@@ -117,23 +100,6 @@ while True:
             crop = face.crop(image, x, y, w, h)
         else:
             crop = face.resize(face.crop(image, x, y, w, h))
-
-        # create Timestamp for labeling the image-file
-        st = datetime.datetime.fromtimestamp(time.time()).strftime('%Y%m%d_%H%M%S')
-
-        # If sending is activated, send the hole image and the close up to the user
-        if config.get("SendImage") is True:
-            filename_capture = os.path.join(config.get("surveillanceDir"),'capture_'+st+'.jpg')
-            to_node("status", "Writing image to " + filename_capture)
-            cv2.imwrite(filename_capture, image_orig);
-            bot.sendPhoto(config.get("telegramChatid"), open(filename_capture, 'rb'))
-
-            filename_face_capture = os.path.join(config.get("surveillanceDir"),'face_'+st+'.jpg')
-            to_node("status", "Writing face image to " + filename_face_capture)
-            cv2.imwrite(filename_face_capture, crop);
-            bot.sendPhoto(config.get("telegramChatid"), open(filename_face_capture, 'rb'))
-
-
         # Test face against model.
         label, confidence = model.predict(crop)
         # We have a match if the label is not "-1" which equals unknown because of exceeded threshold and is not "0" which are negtive training images (see training folder).
@@ -163,10 +129,5 @@ while True:
             current_user = 0
             # callback to node helper
             to_node("login", {"user": current_user, "confidence": None})
-            # save training images in folder if activated
-            if config.get("SaveTrainingImagesToFolder") is True:
-                filenametrain = os.path.join(config.get("TrainingFolder") , 'face_'+st+'.jpg')
-                cv2.imwrite(filenametrain, crop)
-                to_node("status", 'Found unknown face and wrote training image to '+ filenametrain)
         else:
             continue
