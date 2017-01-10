@@ -45,7 +45,7 @@ def rotateImage(image, angle):
 
 
 to_node("status", "Facerecognition started...")
-bot = telepot.Bot(config.get("telegramBotToken")
+bot = telepot.Bot(config.get("telegramBotToken"))
 
 # Setup variables
 current_user = None
